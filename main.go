@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -67,7 +68,25 @@ func addNote(cmd *cobra.Command, args []string) {
 }
 
 func removeNote(cmd *cobra.Command, args []string) {
-    fmt.Println("Removing note")
+    path := cmd.Root().Annotations["stateFilePath"]
+    notes := readState(path)
+
+    if len(args) < 1 {
+        log.Fatal("specify index to remove")
+    }
+
+    index, err := strconv.Atoi(args[0])
+    if err != nil {
+        log.Fatal("error parsing note index: ", err)
+    }
+    
+    if index >= len(notes) {
+        log.Fatal("invalid note index")
+    }
+
+    notes = append(notes[:index], notes[index + 1:]...)
+
+    writeState(path, &notes)
 }
 
 func listNotes(cmd *cobra.Command, args []string) {
