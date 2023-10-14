@@ -3,14 +3,15 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"log"
-	"os"
-	"path/filepath"
-	"strconv"
+    "bufio"
+    "fmt"
+    "log"
+    "os"
+    "path/filepath"
+    "runtime"
+    "strconv"
 
-	"github.com/spf13/cobra"
+    "github.com/spf13/cobra"
 )
 
 // Notes is a type alias for a simple string slice.
@@ -86,7 +87,7 @@ func removeNote(cmd *cobra.Command, args []string) {
     if err != nil {
         log.Fatal("error parsing note index: ", err)
     }
-    
+
     if index >= len(notes) {
         log.Fatal("invalid note index")
     }
@@ -109,15 +110,26 @@ func listNotes(cmd *cobra.Command, args []string) {
 // getDataBasePath finds the directory in which to place the
 // current state of the notes.
 func getDataBasePath() string {
-    basePath, exists := os.LookupEnv("XDG_STATE_HOME")
+    var basePath string
+    var exists bool
 
-    if !exists {
-        homeDir, err := os.UserHomeDir()
-        if err != nil {
-            log.Fatal("error locating user's home directory: ", err)
+    switch runtime.GOOS {
+    case "windows":
+        basePath, exists = os.LookupEnv("LOCALAPPDATA")
+        if !exists {
+            log.Fatal("failed to locate local app data")
         }
+    case "darwin":
+    case "linux":
+        basePath, exists = os.LookupEnv("XDG_STATE_HOME")
+        if !exists {
+            homeDir, err := os.UserHomeDir()
+            if err != nil {
+                log.Fatal("error locating user's home directory: ", err)
+            }
 
-        basePath = filepath.Join(homeDir, ".local/state")
+            basePath = filepath.Join(homeDir, ".local/state")
+        }
     }
 
     basePath = filepath.Join(basePath, "cmd-notes")
