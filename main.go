@@ -1,3 +1,5 @@
+// This is an extemely simple package for creating and tracking
+// short note snippets.
 package main
 
 import (
@@ -11,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Notes is a type alias for a simple string slice.
 type Notes []string;
 
 func main() {
@@ -21,6 +24,8 @@ func main() {
     }
 }
 
+// setup creates the environment for the command line
+// parser.
 func setup() *cobra.Command {
     rootCmd := &cobra.Command{
         Use: "cmd-notes",
@@ -56,6 +61,7 @@ func setup() *cobra.Command {
     return rootCmd
 }
 
+// addNote creates a new note.
 func addNote(cmd *cobra.Command, args []string) {
     path := cmd.Root().Annotations["stateFilePath"]
     notes := readState(path)
@@ -67,6 +73,7 @@ func addNote(cmd *cobra.Command, args []string) {
     fmt.Println("Successfully added note!")
 }
 
+// removeNote removes an existing note.
 func removeNote(cmd *cobra.Command, args []string) {
     path := cmd.Root().Annotations["stateFilePath"]
     notes := readState(path)
@@ -89,6 +96,7 @@ func removeNote(cmd *cobra.Command, args []string) {
     writeState(path, &notes)
 }
 
+// listNotes lists all existing notes.
 func listNotes(cmd *cobra.Command, args []string) {
     path := cmd.Root().Annotations["stateFilePath"]
     notes := readState(path)
@@ -98,6 +106,8 @@ func listNotes(cmd *cobra.Command, args []string) {
     }
 }
 
+// getDataBasePath finds the directory in which to place the
+// current state of the notes.
 func getDataBasePath() string {
     basePath, exists := os.LookupEnv("XDG_STATE_HOME")
 
@@ -115,6 +125,8 @@ func getDataBasePath() string {
     return basePath
 }
 
+// readState reads the current state of the notes from
+// the given path.
 func readState(path string) Notes {
     notes := make([]string, 0)
     stateFilePath := filepath.Join(path, "state")
@@ -137,6 +149,10 @@ func readState(path string) Notes {
     return notes
 }
 
+// writeState writes the current state of the notes to
+// the given path. It first writes the state to a temporary
+// file and then renames it to prevent corruption of
+// the notes.
 func writeState(path string, notes *Notes) {
     tempFilePath := filepath.Join(path, "state.temp") 
     stateFilePath := filepath.Join(path, "state")
