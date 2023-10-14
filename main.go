@@ -13,25 +13,19 @@ func main() {
     cmdAdd := &cobra.Command{
         Use: "add <note to add>",
         Short: "Add note",
-        Run: func(cmd *cobra.Command, args []string) {
-            fmt.Println("Adding a note")
-        },
+        Run: addNote,
     }
 
     cmdRemove := &cobra.Command{
         Use: "rm <note id to remove>",
         Short: "Remove note",
-        Run: func(cmd *cobra.Command, args []string) {
-            fmt.Println("Removing note")
-        },
+        Run: removeNote,
     }
 
     cmdList := &cobra.Command{
         Use: "ls",
         Short: "List notes",
-        Run: func(cmd *cobra.Command, args []string) {
-            fmt.Println("Listing notes")
-        },
+        Run: listNotes,
     }
 
     rootCmd.AddCommand(cmdAdd, cmdList, cmdRemove)
@@ -40,4 +34,16 @@ func main() {
         fmt.Println(err)
         os.Exit(0)
     }
+}
+
+func addNote(cmd *cobra.Command, args []string) {
+    fmt.Println("Adding a note")
+}
+
+func removeNote(cmd *cobra.Command, args []string) {
+    fmt.Println("Removing note")
+}
+
+func listNotes(cmd *cobra.Command, args []string) {
+    fmt.Println("Listing notes")
 }
