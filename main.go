@@ -40,13 +40,13 @@ func setup() *cobra.Command {
 	rootCmd.Annotations = make(map[string]string)
 
 	cmdAdd := &cobra.Command{
-		Use:   "add <note to add>",
+		Use:   "add \"<note>\"",
 		Short: "Add note",
 		Run:   addNote,
 	}
 
 	cmdRemove := &cobra.Command{
-		Use:   "rm <note index to remove>",
+		Use:   "rm <index>",
 		Short: "Remove note",
 		Run:   removeNote,
 	}
@@ -67,6 +67,10 @@ func addNote(cmd *cobra.Command, args []string) {
 	path := cmd.Root().Annotations["stateFilePath"]
 	notes := readState(path)
 
+    if len(args) < 1 {
+        log.Fatal("usage: cmd-notes add \"<note>\"")
+    }
+
 	notes = append(notes, args[0])
 
 	writeState(path, &notes)
@@ -80,7 +84,7 @@ func removeNote(cmd *cobra.Command, args []string) {
 	notes := readState(path)
 
 	if len(args) < 1 {
-		log.Fatal("specify index to remove")
+        log.Fatal("usage: cmd-notes rm <index>")
 	}
 
 	index, err := strconv.Atoi(args[0])
