@@ -71,7 +71,7 @@ func addNote(cmd *cobra.Command, args []string) {
 
 	writeState(path, &notes)
 
-	fmt.Println("Successfully added note!")
+	fmt.Println("\033[32m \u2713 \033[0m added note")
 }
 
 // removeNote removes an existing note.
@@ -95,6 +95,8 @@ func removeNote(cmd *cobra.Command, args []string) {
 	notes = append(notes[:index], notes[index+1:]...)
 
 	writeState(path, &notes)
+
+    fmt.Println("\033[31m \u2717 \033[0m removed note")
 }
 
 // listNotes lists all existing notes.
@@ -103,7 +105,7 @@ func listNotes(cmd *cobra.Command, args []string) {
 	notes := readState(path)
 
 	for index, note := range notes {
-		fmt.Printf("%d) %s\n", index, note)
+		fmt.Printf("\033[94m %d \033[0m- %s\n", index, note)
 	}
 }
 
