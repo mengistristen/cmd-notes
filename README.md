@@ -14,7 +14,7 @@ $ cmd-notes add "There's something of note"
 
 ```
 $ cmd-notes ls
-0) There's something of note
+0 - There's something of note
 ```
 
 ### Remove a Note
