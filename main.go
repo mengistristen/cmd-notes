@@ -148,7 +148,7 @@ func listNotes(cmd *cobra.Command, args []string) {
 			color = "\033[92m"
 		}
 
-		fmt.Printf("\033[94m %d \033[0m- %s%s\n", index, color, note.Contents)
+		fmt.Printf("\033[94m %d \033[0m- %s%s\033[0m\n", index, color, note.Contents)
 	}
 }
 
