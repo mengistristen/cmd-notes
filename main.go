@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	TODO = iota
+	NONE = iota
+	TODO
 	IN_PROGRESS
 	COMPLETE
 )
