@@ -124,7 +124,18 @@ func listNotes(cmd *cobra.Command, args []string) {
 	notes := readState(path)
 
 	for index, note := range notes {
-		fmt.Printf("\033[94m %d \033[0m- %s\n", index, note.Contents)
+		color := "\033[0m"
+
+		switch note.State {
+		case TODO:
+			color = "\033[91m"
+		case IN_PROGRESS:
+			color = "\033[93m"
+		case COMPLETE:
+			color = "\033[92m"
+		}
+
+		fmt.Printf("\033[94m %d \033[0m- %s%s\n", index, color, note.Contents)
 	}
 }
 
