@@ -70,7 +70,19 @@ func setup() *cobra.Command {
 		Run:   listNotes,
 	}
 
-	rootCmd.AddCommand(cmdAdd, cmdList, cmdRemove)
+	cmdPromote := &cobra.Command{
+		Use:   "promote",
+		Short: "Promote a note",
+		Run:   promoteNote,
+	}
+
+	cmdDemote := &cobra.Command{
+		Use:   "demote",
+		Short: "Demote a note",
+		Run:   demoteNote,
+	}
+
+	rootCmd.AddCommand(cmdAdd, cmdList, cmdRemove, cmdPromote, cmdDemote)
 
 	return rootCmd
 }
@@ -85,7 +97,7 @@ func addNote(cmd *cobra.Command, args []string) {
 	}
 
 	notes = append(notes, Note{
-		State:    TODO,
+		State:    NONE,
 		Contents: args[0],
 	})
 
@@ -138,6 +150,70 @@ func listNotes(cmd *cobra.Command, args []string) {
 
 		fmt.Printf("\033[94m %d \033[0m- %s%s\n", index, color, note.Contents)
 	}
+}
+
+// promoteNote promotes a note to the next state
+func promoteNote(cmd *cobra.Command, args []string) {
+	path := cmd.Root().Annotations["stateFilePath"]
+	notes := readState(path)
+
+	if len(args) < 1 {
+		log.Fatal("usage: cmd-notes promote <index>")
+	}
+
+	index, err := strconv.Atoi(args[0])
+	if err != nil {
+		log.Fatal("error parsing note index: ", err)
+	}
+
+	if index >= len(notes) {
+		log.Fatal("invalid note index")
+	}
+
+	switch notes[index].State {
+	case NONE:
+		notes[index].State = TODO
+	case TODO:
+		notes[index].State = IN_PROGRESS
+	case IN_PROGRESS:
+		notes[index].State = COMPLETE
+	}
+
+	writeState(path, &notes)
+
+	fmt.Println("\033[32m \u2713 \033[0mpromoted note")
+}
+
+// demoteNote demotes a note to the previous state
+func demoteNote(cmd *cobra.Command, args []string) {
+	path := cmd.Root().Annotations["stateFilePath"]
+	notes := readState(path)
+
+	if len(args) < 1 {
+		log.Fatal("usage: cmd-notes demote <index>")
+	}
+
+	index, err := strconv.Atoi(args[0])
+	if err != nil {
+		log.Fatal("error parsing note index: ", err)
+	}
+
+	if index >= len(notes) {
+		log.Fatal("invalid note index")
+	}
+
+	switch notes[index].State {
+	case TODO:
+		notes[index].State = NONE
+	case IN_PROGRESS:
+		notes[index].State = TODO
+	case COMPLETE:
+		notes[index].State = IN_PROGRESS
+	}
+
+	writeState(path, &notes)
+
+	fmt.Println("\033[32m \u2713 \033[0mdemoted note")
 }
 
 // getDataBasePath finds the directory in which to place the
