@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"os"
@@ -14,8 +15,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	TODO = iota
+	IN_PROGRESS
+	COMPLETE
+)
+
+type Note struct {
+	State    int
+	Contents string
+}
+
 // Notes is a type alias for a simple string slice.
-type Notes []string
+type Notes []Note
 
 func main() {
 	command := setup()
@@ -71,7 +83,10 @@ func addNote(cmd *cobra.Command, args []string) {
 		log.Fatal("usage: cmd-notes add \"<note>\"")
 	}
 
-	notes = append(notes, args[0])
+	notes = append(notes, Note{
+		State:    TODO,
+		Contents: args[0],
+	})
 
 	writeState(path, &notes)
 
@@ -109,7 +124,7 @@ func listNotes(cmd *cobra.Command, args []string) {
 	notes := readState(path)
 
 	for index, note := range notes {
-		fmt.Printf("\033[94m %d \033[0m- %s\n", index, note)
+		fmt.Printf("\033[94m %d \033[0m- %s\n", index, note.Contents)
 	}
 }
 
@@ -146,7 +161,7 @@ func getDataBasePath() string {
 // readState reads the current state of the notes from
 // the given path.
 func readState(path string) Notes {
-	notes := make([]string, 0)
+	notes := make([]Note, 0)
 	stateFilePath := filepath.Join(path, "state")
 
 	file, err := os.Open(stateFilePath)
@@ -157,11 +172,11 @@ func readState(path string) Notes {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	reader := bufio.NewReader(file)
+	dec := gob.NewDecoder(reader)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		notes = append(notes, line)
+	if err := dec.Decode(&notes); err != nil {
+		log.Fatal("failed to decode file: ", err)
 	}
 
 	return notes
@@ -187,8 +202,9 @@ func writeState(path string, notes *Notes) {
 
 	writer := bufio.NewWriter(file)
 
-	for _, note := range *notes {
-		fmt.Fprintln(writer, note)
+	enc := gob.NewEncoder(writer)
+	if err := enc.Encode(notes); err != nil {
+		log.Fatal("error encoding data: ", err)
 	}
 
 	writer.Flush()
