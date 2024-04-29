@@ -67,9 +67,9 @@ func addNote(cmd *cobra.Command, args []string) {
 	path := cmd.Root().Annotations["stateFilePath"]
 	notes := readState(path)
 
-    if len(args) < 1 {
-        log.Fatal("usage: cmd-notes add \"<note>\"")
-    }
+	if len(args) < 1 {
+		log.Fatal("usage: cmd-notes add \"<note>\"")
+	}
 
 	notes = append(notes, args[0])
 
@@ -84,7 +84,7 @@ func removeNote(cmd *cobra.Command, args []string) {
 	notes := readState(path)
 
 	if len(args) < 1 {
-        log.Fatal("usage: cmd-notes rm <index>")
+		log.Fatal("usage: cmd-notes rm <index>")
 	}
 
 	index, err := strconv.Atoi(args[0])
