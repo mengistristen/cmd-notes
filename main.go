@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Available states
 const (
 	NONE = iota
 	TODO
@@ -23,11 +24,19 @@ const (
 	COMPLETE
 )
 
+// Available priorities
+const (
+	LOW = iota
+	MEDIUM
+	HIGH
+)
+
 type Formatter interface {
 	format(w io.Writer, notes []Note)
 }
 
 type Note struct {
+	Priority int
 	State    int
 	Contents string
 }
@@ -37,6 +46,16 @@ type TerminalFormatter struct{}
 func (f TerminalFormatter) format(w io.Writer, notes []Note) {
 	for index, note := range notes {
 		color := "\033[0m"
+		priority := ""
+
+		switch note.Priority {
+		case LOW:
+			priority = "(\033[34m\u2193\033[0m)"
+		case MEDIUM:
+			priority = "(-)"
+		case HIGH:
+			priority = "(\033[31m\u2191\033[0m)"
+		}
 
 		switch note.State {
 		case TODO:
@@ -47,7 +66,7 @@ func (f TerminalFormatter) format(w io.Writer, notes []Note) {
 			color = "\033[92m"
 		}
 
-		fmt.Fprintf(w, "\033[94m %d \033[0m- %s%s\033[0m\n", index, color, note.Contents)
+		fmt.Fprintf(w, "%s\033[94m %d \033[0m- %s%s\033[0m\n", priority, index, color, note.Contents)
 	}
 }
 
@@ -106,7 +125,13 @@ func setup() *cobra.Command {
 		Run:   demoteNote,
 	}
 
-	rootCmd.AddCommand(cmdAdd, cmdList, cmdRemove, cmdPromote, cmdDemote)
+	cmdPriority := &cobra.Command{
+		Use:   "priority <index> <priority>",
+		Short: "Set note priority",
+		Run:   updatePriority,
+	}
+
+	rootCmd.AddCommand(cmdAdd, cmdList, cmdRemove, cmdPromote, cmdDemote, cmdPriority)
 
 	return rootCmd
 }
@@ -121,6 +146,7 @@ func addNote(cmd *cobra.Command, args []string) {
 	}
 
 	notes = append(notes, Note{
+		Priority: MEDIUM,
 		State:    NONE,
 		Contents: args[0],
 	})
@@ -227,6 +253,40 @@ func demoteNote(cmd *cobra.Command, args []string) {
 	writeState(path, &notes)
 
 	fmt.Println("\033[32m \u2713 \033[0mdemoted note")
+}
+
+// updatePriority changes the priority of a note
+func updatePriority(cmd *cobra.Command, args []string) {
+	path := cmd.Root().Annotations["stateFilePath"]
+	notes := readState(path)
+
+	if len(args) < 2 {
+		log.Fatal("usage: cmd-notes priority <index> <priority>")
+	}
+
+	index, err := strconv.Atoi(args[0])
+	if err != nil {
+		log.Fatal("error parsing note index: ", err)
+	}
+
+	if index >= len(notes) {
+		log.Fatal("invalid note index")
+	}
+
+	priority, err := strconv.Atoi(args[1])
+	if err != nil {
+		log.Fatal("error parsing note priority: ", err)
+	}
+
+	if priority != LOW && priority != MEDIUM && priority != HIGH {
+		log.Fatal("invalid note priority")
+	}
+
+	notes[index].Priority = priority
+
+	writeState(path, &notes)
+
+	fmt.Println("\033[32m \u2713 \033[0mpriority updated")
 }
 
 // getDataBasePath finds the directory in which to place the
