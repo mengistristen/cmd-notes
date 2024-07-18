@@ -23,7 +23,7 @@ const (
 	COMPLETE
 )
 
-type IFormatter interface {
+type Formatter interface {
 	format(w io.Writer, notes []Note)
 }
 
@@ -156,12 +156,12 @@ func removeNote(cmd *cobra.Command, args []string) {
 }
 
 // listNotes lists all existing notes.
-func listNotes(formatter IFormatter) func(*cobra.Command, []string) {
+func listNotes(f Formatter) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		path := cmd.Root().Annotations["stateFilePath"]
 		notes := readState(path)
 
-		formatter.format(os.Stdout, notes)
+		f.format(os.Stdout, notes)
 	}
 }
 
