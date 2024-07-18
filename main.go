@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -22,9 +23,32 @@ const (
 	COMPLETE
 )
 
+type IFormatter interface {
+	format(w io.Writer, notes []Note)
+}
+
 type Note struct {
 	State    int
 	Contents string
+}
+
+type TerminalFormatter struct{}
+
+func (f TerminalFormatter) format(w io.Writer, notes []Note) {
+	for index, note := range notes {
+		color := "\033[0m"
+
+		switch note.State {
+		case TODO:
+			color = "\033[91m"
+		case IN_PROGRESS:
+			color = "\033[93m"
+		case COMPLETE:
+			color = "\033[92m"
+		}
+
+		fmt.Fprintf(w, "\033[94m %d \033[0m- %s%s\033[0m\n", index, color, note.Contents)
+	}
 }
 
 // Notes is a type alias for a simple string slice.
@@ -67,7 +91,7 @@ func setup() *cobra.Command {
 	cmdList := &cobra.Command{
 		Use:   "ls",
 		Short: "List notes",
-		Run:   listNotes,
+		Run:   listNotes(TerminalFormatter{}),
 	}
 
 	cmdPromote := &cobra.Command{
@@ -132,23 +156,12 @@ func removeNote(cmd *cobra.Command, args []string) {
 }
 
 // listNotes lists all existing notes.
-func listNotes(cmd *cobra.Command, args []string) {
-	path := cmd.Root().Annotations["stateFilePath"]
-	notes := readState(path)
+func listNotes(formatter IFormatter) func(*cobra.Command, []string) {
+	return func(cmd *cobra.Command, args []string) {
+		path := cmd.Root().Annotations["stateFilePath"]
+		notes := readState(path)
 
-	for index, note := range notes {
-		color := "\033[0m"
-
-		switch note.State {
-		case TODO:
-			color = "\033[91m"
-		case IN_PROGRESS:
-			color = "\033[93m"
-		case COMPLETE:
-			color = "\033[92m"
-		}
-
-		fmt.Printf("\033[94m %d \033[0m- %s%s\033[0m\n", index, color, note.Contents)
+		formatter.format(os.Stdout, notes)
 	}
 }
 
