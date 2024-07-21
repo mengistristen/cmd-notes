@@ -1,0 +1,3 @@
+{{- range $index, $item := . }}
+{{ priority $item.Priority }} {{ index $index }} - {{ colorizeContents $item.State $item.Contents }} 
+{{- end }}

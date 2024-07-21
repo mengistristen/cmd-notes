@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"text/template"
 
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,53 @@ const (
 	MEDIUM
 	HIGH
 )
+
+// ANSI escape codes for colors
+const (
+	red    = "\033[91m"
+	yellow = "\033[93m"
+	green  = "\033[92m"
+	blue   = "\033[34m"
+	reset  = "\033[0m"
+)
+
+var funcMap = template.FuncMap{
+	"colorizeContents": func(state int, text string) string {
+		var result string
+
+		switch state {
+		case TODO:
+			result = red + text + reset
+		case IN_PROGRESS:
+			result = yellow + text + reset
+		case COMPLETE:
+			result = green + text + reset
+		default:
+			result = text
+		}
+
+		return result
+	},
+	"priority": func(priority int) string {
+		var result string
+
+		switch priority {
+		case LOW:
+			result = "(" + blue + "\u2193" + reset + ")"
+		case MEDIUM:
+			result = "(-)"
+		case HIGH:
+			result = "(" + red + "\u2191" + reset + ")"
+		default:
+			result = ""
+		}
+
+		return result
+	},
+	"index": func(index int) string {
+		return blue + strconv.Itoa(index) + reset
+	},
+}
 
 type Formatter interface {
 	format(w io.Writer, notes []Note)
@@ -67,6 +115,31 @@ func (f TerminalFormatter) format(w io.Writer, notes []Note) {
 		}
 
 		fmt.Fprintf(w, "%s\033[94m %d \033[0m- %s%s\033[0m\n", priority, index, color, note.Contents)
+	}
+}
+
+type TemplateFormatter struct {
+	Template *template.Template
+}
+
+func NewTemplateFormatter(templateName string) *TemplateFormatter {
+	path := getDataBasePath()
+	name := templateName + ".tmpl"
+
+	t, err := template.New(name).Funcs(funcMap).ParseFiles(fmt.Sprintf("%s/templates/%s", path, name))
+	if err != nil {
+		log.Fatalf("Error parsing template file: %v", err)
+	}
+
+	return &TemplateFormatter{
+		Template: t,
+	}
+}
+
+func (f TemplateFormatter) format(w io.Writer, notes []Note) {
+	err := f.Template.Execute(os.Stdout, notes)
+	if err != nil {
+		log.Fatalf("Error executing template: %v", err)
 	}
 }
 
@@ -110,7 +183,7 @@ func setup() *cobra.Command {
 	cmdList := &cobra.Command{
 		Use:   "ls",
 		Short: "List notes",
-		Run:   listNotes(TerminalFormatter{}),
+		Run:   listNotes(NewTemplateFormatter("default")),
 	}
 
 	cmdPromote := &cobra.Command{
