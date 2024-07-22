@@ -1,0 +1,15 @@
+## This Week
+
+{{ range $item := filterByPriority . 2 -}}
+- {{ $item.Contents }}
+{{ end }}
+## Next Week
+
+{{ range $item := filterByPriority . 1 -}}
+- {{ $item.Contents }}
+{{ end }}
+## Later
+
+{{ range $item := filterByPriority . 0 -}}
+- {{ $item.Contents }}
+{{ end -}}
