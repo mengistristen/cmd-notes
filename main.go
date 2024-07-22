@@ -77,7 +77,20 @@ var funcMap = template.FuncMap{
 	"index": func(index int) string {
 		return blue + strconv.Itoa(index) + reset
 	},
+	"filterByPriority": func(notes []Note, priority int) []Note {
+		var filteredItems []Note
+
+		for _, note := range notes {
+			if note.Priority == priority {
+				filteredItems = append(filteredItems, note)
+			}
+		}
+
+		return filteredItems
+	},
 }
+
+var templ string
 
 type Formatter interface {
 	format(w io.Writer, notes []Note)
@@ -118,26 +131,18 @@ func (f TerminalFormatter) format(w io.Writer, notes []Note) {
 	}
 }
 
-type TemplateFormatter struct {
-	Template *template.Template
-}
+type TemplateFormatter struct{}
 
-func NewTemplateFormatter(templateName string) *TemplateFormatter {
+func (f TemplateFormatter) format(w io.Writer, notes []Note) {
 	path := getDataBasePath()
-	name := templateName + ".tmpl"
+	name := templ + ".tmpl"
 
 	t, err := template.New(name).Funcs(funcMap).ParseFiles(fmt.Sprintf("%s/templates/%s", path, name))
 	if err != nil {
 		log.Fatalf("Error parsing template file: %v", err)
 	}
 
-	return &TemplateFormatter{
-		Template: t,
-	}
-}
-
-func (f TemplateFormatter) format(w io.Writer, notes []Note) {
-	err := f.Template.Execute(os.Stdout, notes)
+	err = t.Execute(os.Stdout, notes)
 	if err != nil {
 		log.Fatalf("Error executing template: %v", err)
 	}
@@ -183,8 +188,10 @@ func setup() *cobra.Command {
 	cmdList := &cobra.Command{
 		Use:   "ls",
 		Short: "List notes",
-		Run:   listNotes(NewTemplateFormatter("default")),
+		Run:   listNotes(TemplateFormatter{}),
 	}
+
+	cmdList.Flags().StringVar(&templ, "template", "default", "The template to use for printing")
 
 	cmdPromote := &cobra.Command{
 		Use:   "promote",
