@@ -11,7 +11,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/spf13/cobra"
@@ -229,6 +231,10 @@ func addNote(cmd *cobra.Command, args []string) {
 		Priority: MEDIUM,
 		State:    NONE,
 		Contents: args[0],
+	})
+
+	slices.SortFunc(notes, func(a, b Note) int {
+		return strings.Compare(a.Contents, b.Contents)
 	})
 
 	writeState(path, &notes)
