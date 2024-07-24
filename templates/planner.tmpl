@@ -1,15 +1,15 @@
 ## This Week
 
 {{ range $item := filterByPriority . 2 -}}
-- {{ $item.Contents }}
+- {{ $item.Contents }} {{ status $item.State }}
 {{ end }}
 ## Next Week
 
 {{ range $item := filterByPriority . 1 -}}
-- {{ $item.Contents }}
+- {{ $item.Contents }} {{ status $item.State }}
 {{ end }}
 ## Later
 
 {{ range $item := filterByPriority . 0 -}}
-- {{ $item.Contents }}
+- {{ $item.Contents }} {{ status $item.State }}
 {{ end -}}

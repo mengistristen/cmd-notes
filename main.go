@@ -76,6 +76,21 @@ var funcMap = template.FuncMap{
 
 		return result
 	},
+	"status": func(status int) string {
+		var result string
+
+		switch status {
+		case TODO:
+			result = "[Todo]"
+		case IN_PROGRESS:
+			result = "[In Progress]"
+		case COMPLETE:
+			result = "[Complete]"
+		default:
+			result = ""
+		}
+		return result
+	},
 	"index": func(index int) string {
 		return blue + strconv.Itoa(index) + reset
 	},
