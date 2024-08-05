@@ -81,11 +81,11 @@ var funcMap = template.FuncMap{
 
 		switch status {
 		case TODO:
-			result = "[Todo]"
+			result = "Todo"
 		case IN_PROGRESS:
-			result = "[In Progress]"
+			result = "In Progress"
 		case COMPLETE:
-			result = "[Complete]"
+			result = "Complete"
 		default:
 			result = ""
 		}
