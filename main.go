@@ -248,10 +248,6 @@ func addNote(cmd *cobra.Command, args []string) {
 		Contents: args[0],
 	})
 
-	slices.SortFunc(notes, func(a, b Note) int {
-		return strings.Compare(a.Contents, b.Contents)
-	})
-
 	writeState(path, &notes)
 
 	fmt.Println("\033[32m \u2713 \033[0madded note")
@@ -451,6 +447,14 @@ func readState(path string) Notes {
 func writeState(path string, notes *Notes) {
 	tempFilePath := filepath.Join(path, "state.temp")
 	stateFilePath := filepath.Join(path, "state")
+
+	slices.SortFunc(*notes, func(a, b Note) int {
+		if a.Priority != b.Priority {
+			return b.Priority - a.Priority
+		}
+
+		return strings.Compare(a.Contents, b.Contents)
+	})
 
 	err := os.MkdirAll(path, 0755)
 	if err != nil {
