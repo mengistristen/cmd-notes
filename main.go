@@ -3,44 +3,20 @@
 package main
 
 import (
-	"bufio"
-	"encoding/gob"
+	"cmd-notes/note"
+	"cmd-notes/tui"
+	"cmd-notes/utils"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strconv"
-	"strings"
 	"text/template"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-)
-
-// Available states
-const (
-	NONE = iota
-	TODO
-	IN_PROGRESS
-	COMPLETE
-)
-
-// Available priorities
-const (
-	LOW = iota
-	MEDIUM
-	HIGH
-)
-
-// ANSI escape codes for colors
-const (
-	red    = "\033[91m"
-	yellow = "\033[93m"
-	green  = "\033[92m"
-	blue   = "\033[34m"
-	reset  = "\033[0m"
 )
 
 var funcMap = template.FuncMap{
@@ -48,12 +24,12 @@ var funcMap = template.FuncMap{
 		var result string
 
 		switch state {
-		case TODO:
-			result = red + text + reset
-		case IN_PROGRESS:
-			result = yellow + text + reset
-		case COMPLETE:
-			result = green + text + reset
+		case note.TODO:
+			result = note.RED + text + note.RESET
+		case note.IN_PROGRESS:
+			result = note.YELLOW + text + note.RESET
+		case note.COMPLETE:
+			result = note.GREEN + text + note.RESET
 		default:
 			result = text
 		}
@@ -64,12 +40,12 @@ var funcMap = template.FuncMap{
 		var result string
 
 		switch priority {
-		case LOW:
-			result = "(" + blue + "\u2193" + reset + ")"
-		case MEDIUM:
+		case note.LOW:
+			result = "(" + note.BLUE + "\u2193" + note.RESET + ")"
+		case note.MEDIUM:
 			result = "(-)"
-		case HIGH:
-			result = "(" + red + "\u2191" + reset + ")"
+		case note.HIGH:
+			result = "(" + note.RED + "\u2191" + note.RESET + ")"
 		default:
 			result = ""
 		}
@@ -80,11 +56,11 @@ var funcMap = template.FuncMap{
 		var result string
 
 		switch status {
-		case TODO:
+		case note.TODO:
 			result = "Todo"
-		case IN_PROGRESS:
+		case note.IN_PROGRESS:
 			result = "In Progress"
-		case COMPLETE:
+		case note.COMPLETE:
 			result = "Complete"
 		default:
 			result = ""
@@ -92,10 +68,10 @@ var funcMap = template.FuncMap{
 		return result
 	},
 	"index": func(index int) string {
-		return blue + strconv.Itoa(index) + reset
+		return note.BLUE + strconv.Itoa(index) + note.RESET
 	},
-	"filterByPriority": func(notes []Note, priority int) []Note {
-		var filteredItems []Note
+	"filterByPriority": func(notes []note.Note, priority int) []note.Note {
+		var filteredItems []note.Note
 
 		for _, note := range notes {
 			if note.Priority == priority {
@@ -110,47 +86,41 @@ var funcMap = template.FuncMap{
 var templ string
 
 type Formatter interface {
-	format(w io.Writer, notes []Note)
-}
-
-type Note struct {
-	Priority int
-	State    int
-	Contents string
+	format(w io.Writer, notes []note.Note)
 }
 
 type TerminalFormatter struct{}
 
-func (f TerminalFormatter) format(w io.Writer, notes []Note) {
-	for index, note := range notes {
+func (f TerminalFormatter) format(w io.Writer, notes []note.Note) {
+	for index, n := range notes {
 		color := "\033[0m"
 		priority := ""
 
-		switch note.Priority {
-		case LOW:
+		switch n.Priority {
+		case note.LOW:
 			priority = "(\033[34m\u2193\033[0m)"
-		case MEDIUM:
+		case note.MEDIUM:
 			priority = "(-)"
-		case HIGH:
+		case note.HIGH:
 			priority = "(\033[31m\u2191\033[0m)"
 		}
 
-		switch note.State {
-		case TODO:
+		switch n.State {
+		case note.TODO:
 			color = "\033[91m"
-		case IN_PROGRESS:
+		case note.IN_PROGRESS:
 			color = "\033[93m"
-		case COMPLETE:
+		case note.COMPLETE:
 			color = "\033[92m"
 		}
 
-		fmt.Fprintf(w, "%s\033[94m %d \033[0m- %s%s\033[0m\n", priority, index, color, note.Contents)
+		fmt.Fprintf(w, "%s\033[94m %d \033[0m- %s%s\033[0m\n", priority, index, color, n.Contents)
 	}
 }
 
 type TemplateFormatter struct{}
 
-func (f TemplateFormatter) format(w io.Writer, notes []Note) {
+func (f TemplateFormatter) format(w io.Writer, notes []note.Note) {
 	path := getDataBasePath()
 	name := templ + ".tmpl"
 
@@ -164,9 +134,6 @@ func (f TemplateFormatter) format(w io.Writer, notes []Note) {
 		log.Fatalf("Error executing template: %v", err)
 	}
 }
-
-// Notes is a type alias for a simple string slice.
-type Notes []Note
 
 func main() {
 	command := setup()
@@ -228,7 +195,13 @@ func setup() *cobra.Command {
 		Run:   updatePriority,
 	}
 
-	rootCmd.AddCommand(cmdAdd, cmdList, cmdRemove, cmdPromote, cmdDemote, cmdPriority)
+	cmdTui := &cobra.Command{
+		Use:   "tui",
+		Short: "Run tui",
+		Run:   startTui,
+	}
+
+	rootCmd.AddCommand(cmdAdd, cmdList, cmdRemove, cmdPromote, cmdDemote, cmdPriority, cmdTui)
 
 	return rootCmd
 }
@@ -236,19 +209,19 @@ func setup() *cobra.Command {
 // addNote creates a new note.
 func addNote(cmd *cobra.Command, args []string) {
 	path := cmd.Root().Annotations["stateFilePath"]
-	notes := readState(path)
+	notes := utils.ReadState(path)
 
 	if len(args) < 1 {
 		log.Fatal("usage: cmd-notes add \"<note>\"")
 	}
 
-	notes = append(notes, Note{
-		Priority: MEDIUM,
-		State:    NONE,
+	notes = append(notes, note.Note{
+		Priority: note.MEDIUM,
+		State:    note.NONE,
 		Contents: args[0],
 	})
 
-	writeState(path, &notes)
+	utils.WriteState(path, &notes)
 
 	fmt.Println("\033[32m \u2713 \033[0madded note")
 }
@@ -256,7 +229,7 @@ func addNote(cmd *cobra.Command, args []string) {
 // removeNote removes an existing note.
 func removeNote(cmd *cobra.Command, args []string) {
 	path := cmd.Root().Annotations["stateFilePath"]
-	notes := readState(path)
+	notes := utils.ReadState(path)
 
 	if len(args) < 1 {
 		log.Fatal("usage: cmd-notes rm <index>")
@@ -273,7 +246,7 @@ func removeNote(cmd *cobra.Command, args []string) {
 
 	notes = append(notes[:index], notes[index+1:]...)
 
-	writeState(path, &notes)
+	utils.WriteState(path, &notes)
 
 	fmt.Println("\033[31m \u2717 \033[0mremoved note")
 }
@@ -282,7 +255,7 @@ func removeNote(cmd *cobra.Command, args []string) {
 func listNotes(f Formatter) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		path := cmd.Root().Annotations["stateFilePath"]
-		notes := readState(path)
+		notes := utils.ReadState(path)
 
 		f.format(os.Stdout, notes)
 	}
@@ -291,7 +264,7 @@ func listNotes(f Formatter) func(*cobra.Command, []string) {
 // promoteNote promotes a note to the next state
 func promoteNote(cmd *cobra.Command, args []string) {
 	path := cmd.Root().Annotations["stateFilePath"]
-	notes := readState(path)
+	notes := utils.ReadState(path)
 
 	if len(args) < 1 {
 		log.Fatal("usage: cmd-notes promote <index>")
@@ -306,16 +279,9 @@ func promoteNote(cmd *cobra.Command, args []string) {
 		log.Fatal("invalid note index")
 	}
 
-	switch notes[index].State {
-	case NONE:
-		notes[index].State = TODO
-	case TODO:
-		notes[index].State = IN_PROGRESS
-	case IN_PROGRESS:
-		notes[index].State = COMPLETE
-	}
+	notes[index].Promote()
 
-	writeState(path, &notes)
+	utils.WriteState(path, &notes)
 
 	fmt.Println("\033[32m \u2713 \033[0mpromoted note")
 }
@@ -323,7 +289,7 @@ func promoteNote(cmd *cobra.Command, args []string) {
 // demoteNote demotes a note to the previous state
 func demoteNote(cmd *cobra.Command, args []string) {
 	path := cmd.Root().Annotations["stateFilePath"]
-	notes := readState(path)
+	notes := utils.ReadState(path)
 
 	if len(args) < 1 {
 		log.Fatal("usage: cmd-notes demote <index>")
@@ -338,16 +304,9 @@ func demoteNote(cmd *cobra.Command, args []string) {
 		log.Fatal("invalid note index")
 	}
 
-	switch notes[index].State {
-	case TODO:
-		notes[index].State = NONE
-	case IN_PROGRESS:
-		notes[index].State = TODO
-	case COMPLETE:
-		notes[index].State = IN_PROGRESS
-	}
+	notes[index].Demote()
 
-	writeState(path, &notes)
+	utils.WriteState(path, &notes)
 
 	fmt.Println("\033[32m \u2713 \033[0mdemoted note")
 }
@@ -355,7 +314,7 @@ func demoteNote(cmd *cobra.Command, args []string) {
 // updatePriority changes the priority of a note
 func updatePriority(cmd *cobra.Command, args []string) {
 	path := cmd.Root().Annotations["stateFilePath"]
-	notes := readState(path)
+	notes := utils.ReadState(path)
 
 	if len(args) < 2 {
 		log.Fatal("usage: cmd-notes priority <index> <priority>")
@@ -375,15 +334,26 @@ func updatePriority(cmd *cobra.Command, args []string) {
 		log.Fatal("error parsing note priority: ", err)
 	}
 
-	if priority != LOW && priority != MEDIUM && priority != HIGH {
+	if priority != note.LOW && priority != note.MEDIUM && priority != note.HIGH {
 		log.Fatal("invalid note priority")
 	}
 
 	notes[index].Priority = priority
 
-	writeState(path, &notes)
+	utils.WriteState(path, &notes)
 
 	fmt.Println("\033[32m \u2713 \033[0mpriority updated")
+}
+
+func startTui(cmd *cobra.Command, args []string) {
+	path := cmd.Root().Annotations["stateFilePath"]
+	notes := utils.ReadState(path)
+
+	p := tea.NewProgram(tui.InitModel(path, notes))
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("error: %v", err)
+		os.Exit(1)
+	}
 }
 
 // getDataBasePath finds the directory in which to place the
@@ -414,71 +384,4 @@ func getDataBasePath() string {
 	basePath = filepath.Join(basePath, "cmd-notes")
 
 	return basePath
-}
-
-// readState reads the current state of the notes from
-// the given path.
-func readState(path string) Notes {
-	notes := make([]Note, 0)
-	stateFilePath := filepath.Join(path, "state")
-
-	file, err := os.Open(stateFilePath)
-	if os.IsNotExist(err) {
-		return notes
-	} else if err != nil {
-		log.Fatal("error opening state file: ", err)
-	}
-	defer file.Close()
-
-	reader := bufio.NewReader(file)
-	dec := gob.NewDecoder(reader)
-
-	if err := dec.Decode(&notes); err != nil {
-		log.Fatal("failed to decode file: ", err)
-	}
-
-	return notes
-}
-
-// writeState writes the current state of the notes to
-// the given path. It first writes the state to a temporary
-// file and then renames it to prevent corruption of
-// the notes.
-func writeState(path string, notes *Notes) {
-	tempFilePath := filepath.Join(path, "state.temp")
-	stateFilePath := filepath.Join(path, "state")
-
-	slices.SortFunc(*notes, func(a, b Note) int {
-		if a.Priority != b.Priority {
-			return b.Priority - a.Priority
-		}
-
-		return strings.Compare(a.Contents, b.Contents)
-	})
-
-	err := os.MkdirAll(path, 0755)
-	if err != nil {
-		log.Fatal("error creating state directories: ", err)
-	}
-
-	file, err := os.Create(tempFilePath)
-	if err != nil {
-		log.Fatal("error creating temporary state file: ", err)
-	}
-
-	writer := bufio.NewWriter(file)
-
-	enc := gob.NewEncoder(writer)
-	if err := enc.Encode(notes); err != nil {
-		log.Fatal("error encoding data: ", err)
-	}
-
-	writer.Flush()
-
-	file.Close()
-
-	err = os.Rename(file.Name(), stateFilePath)
-	if err != nil {
-		log.Fatal("error renaming state file: ", err)
-	}
 }
