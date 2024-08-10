@@ -41,7 +41,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
 			return m, tea.Quit
 		default:
 			if m.editing {
@@ -78,6 +78,9 @@ func updateEditing(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg.Type {
+    case tea.KeyEsc:
+        m.editing = false
+        m.textInput.SetValue("")
 	case tea.KeyEnter:
 		m.editing = false
 		m.notes = append(m.notes, note.Note{
@@ -96,6 +99,8 @@ func updateEditing(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func updateDefault(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
+    case "q":
+        return m, tea.Quit
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
