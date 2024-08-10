@@ -76,7 +76,7 @@ func (m Model) View() string {
 			result += fmt.Sprintf("%s %s - %s\n", cursor, note.FormatPriority(), note.FormatContents())
 		}
 	case ADD:
-		result = m.textInput.View()
+        result = fmt.Sprintf("Add item:\n\n%s\n\n%s", m.textInput.View(), "(esc to quit)")
 	}
 
 	return result
