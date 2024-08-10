@@ -349,7 +349,7 @@ func startTui(cmd *cobra.Command, args []string) {
 	path := cmd.Root().Annotations["stateFilePath"]
 	notes := utils.ReadState(path)
 
-	p := tea.NewProgram(tui.InitModel(path, notes))
+	p := tea.NewProgram(tui.InitModel(path, notes), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("error: %v", err)
 		os.Exit(1)
