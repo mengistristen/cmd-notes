@@ -9,12 +9,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// Available TUI states
+const (
+	LIST = iota
+	ADD
+)
+
 type Model struct {
 	textInput textinput.Model
 	notes     []note.Note
 	path      string
 	cursor    int
-	editing   bool
+	state     int
 }
 
 func InitModel(path string, notes []note.Note) Model {
@@ -29,7 +35,7 @@ func InitModel(path string, notes []note.Note) Model {
 		notes:     notes,
 		path:      path,
 		cursor:    0,
-		editing:   false,
+		state:     LIST,
 	}
 }
 
@@ -44,10 +50,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		default:
-			if m.editing {
-				return updateEditing(m, msg)
-			} else {
+			switch m.state {
+			case LIST:
 				return updateDefault(m, msg)
+			case ADD:
+				return updateEditing(m, msg)
 			}
 		}
 	}
@@ -58,9 +65,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var result string
 
-	if m.editing {
-		result = m.textInput.View()
-	} else {
+	switch m.state {
+	case LIST:
 		for i, note := range m.notes {
 			cursor := " "
 			if m.cursor == i {
@@ -69,6 +75,8 @@ func (m Model) View() string {
 
 			result += fmt.Sprintf("%s %s - %s\n", cursor, note.FormatPriority(), note.FormatContents())
 		}
+	case ADD:
+		result = m.textInput.View()
 	}
 
 	return result
@@ -78,11 +86,11 @@ func updateEditing(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg.Type {
-    case tea.KeyEsc:
-        m.editing = false
-        m.textInput.SetValue("")
+	case tea.KeyEsc:
+		m.state = LIST
+		m.textInput.SetValue("")
 	case tea.KeyEnter:
-		m.editing = false
+		m.state = LIST
 		m.notes = append(m.notes, note.Note{
 			State:    note.NONE,
 			Priority: note.MEDIUM,
@@ -99,8 +107,8 @@ func updateEditing(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func updateDefault(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-    case "q":
-        return m, tea.Quit
+	case "q":
+		return m, tea.Quit
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
@@ -141,15 +149,15 @@ func updateDefault(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.notes) > 0 {
 			m.notes = append(m.notes[:m.cursor], m.notes[m.cursor+1:]...)
 
-            if m.cursor >= len(m.notes) {
-                m.cursor = len(m.notes) - 1 
-            }
+			if m.cursor >= len(m.notes) {
+				m.cursor = len(m.notes) - 1
+			}
 
 			utils.WriteState(m.path, &m.notes)
 			m.notes = utils.ReadState(m.path)
 		}
 	case "a":
-		m.editing = true
+		m.state = ADD
 	}
 
 	return m, nil
