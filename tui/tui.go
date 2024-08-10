@@ -136,6 +136,10 @@ func updateDefault(m Model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.notes) > 0 {
 			m.notes = append(m.notes[:m.cursor], m.notes[m.cursor+1:]...)
 
+            if m.cursor >= len(m.notes) {
+                m.cursor = len(m.notes) - 1 
+            }
+
 			utils.WriteState(m.path, &m.notes)
 			m.notes = utils.ReadState(m.path)
 		}
