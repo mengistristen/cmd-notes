@@ -199,7 +199,7 @@ func updateList(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.notes) > 0 {
 				m.notes = append(m.notes[:m.cursor], m.notes[m.cursor+1:]...)
 
-				if m.cursor >= len(m.notes) {
+				if m.cursor != 0 && m.cursor >= len(m.notes) {
 					m.cursor = len(m.notes) - 1
 				}
 
