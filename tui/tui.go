@@ -4,11 +4,13 @@ import (
 	"cmd-notes/note"
 	"cmd-notes/utils"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Available TUI states
@@ -18,13 +20,17 @@ const (
 )
 
 type Model struct {
-	keys      keymap
-	help      help.Model
-	textInput textinput.Model
-	notes     []note.Note
-	path      string
-	cursor    int
-	state     int
+	keys        keymap
+	help        help.Model
+	textInput   textinput.Model
+	notes       []note.Note
+	path        string
+	cursor      int
+	state       int
+	height      int
+	width       int
+	offset      int
+	initialized bool
 }
 
 type keymap struct {
@@ -82,6 +88,7 @@ func InitModel(path string, notes []note.Note) Model {
 		path:      path,
 		cursor:    0,
 		state:     LIST,
+		offset:    0,
 	}
 }
 
@@ -91,6 +98,12 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.initialized = true
+		m.height = msg.Height
+		m.width = msg.Width
+
+		m.offset = max(0, m.cursor-m.visibleHeight()+1)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -108,23 +121,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) View() string {
-	var result string
-
-	switch m.state {
-	case LIST:
-		for i, note := range m.notes {
-			cursor := " "
-			if m.cursor == i {
-				cursor = ">"
-			}
-
-			result += fmt.Sprintf("%s %s - %s\n", cursor, note.FormatPriority(), note.FormatContents())
+func (m Model) View() (result string) {
+	if m.initialized {
+		switch m.state {
+		case LIST:
+			result = fmt.Sprintf("%s\n%s", m.renderViewport(), m.help.View(m.keys))
+		case ADD:
+			result = m.textInput.View()
 		}
-
-		result += "\n" + m.help.View(m.keys)
-	case ADD:
-		result = fmt.Sprintf("Add item:\n\n%s\n\n%s", m.textInput.View(), "(esc to quit)")
 	}
 
 	return result
@@ -162,10 +166,18 @@ func updateList(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.Up):
 			if m.cursor > 0 {
 				m.cursor--
+
+				if m.cursor < m.offset {
+					m.offset--
+				}
 			}
 		case key.Matches(msg, m.keys.Down):
 			if m.cursor < len(m.notes)-1 {
 				m.cursor++
+
+				if m.cursor >= m.offset+m.visibleHeight() {
+					m.offset++
+				}
 			}
 		case key.Matches(msg, m.keys.IncreaseStatus):
 			if len(m.notes) > 0 {
@@ -203,6 +215,10 @@ func updateList(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor = len(m.notes) - 1
 				}
 
+				if m.offset != 0 && m.offset >= len(m.notes) {
+					m.offset = len(m.notes) - 1
+				}
+
 				utils.WriteState(m.path, &m.notes)
 				m.notes = utils.ReadState(m.path)
 			}
@@ -210,8 +226,77 @@ func updateList(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = ADD
 		case key.Matches(msg, m.keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
+			m.offset = max(0, m.cursor-m.visibleHeight()+1)
 		}
 	}
 
 	return m, nil
+}
+
+func (m Model) renderViewport() (result string) {
+	var renderedNotes []string
+
+	for i, note := range m.notes {
+		var above, below bool
+		var scroll, rendered string
+
+		cursor := " "
+		if m.cursor == i {
+			cursor = ">"
+		}
+
+		if m.offset != 0 && i == m.offset {
+			above = true
+		}
+
+		if m.offset+m.visibleHeight()-1 == i && i < len(m.notes)-1 {
+			below = true
+		}
+
+		if above && below {
+			scroll = "\u2195"
+		} else if above {
+			scroll = "\u2191"
+		} else if below {
+			scroll = "\u2193"
+		} else {
+			scroll = " "
+		}
+
+		if m.visibleHeight() >= len(m.notes) {
+			rendered = fmt.Sprintf("%s %s - %s", cursor, note.FormatPriority(), note.FormatContents())
+		} else {
+			rendered = fmt.Sprintf("%s \u2502 %s %s - %s", scroll, cursor, note.FormatPriority(), note.FormatContents())
+		}
+
+		renderedNotes = append(renderedNotes, rendered)
+	}
+
+	visibleNotes := renderedNotes[m.offset : m.offset+min(m.visibleHeight(), len(renderedNotes))]
+
+	result += strings.Join(visibleNotes, "\n")
+
+	if m.visibleHeight() > len(visibleNotes) {
+		result += strings.Repeat("\n", m.visibleHeight()-len(renderedNotes))
+	}
+
+	return result
+}
+
+func (m Model) visibleHeight() int {
+	return m.height - lipgloss.Height(m.help.View(m.keys))
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
