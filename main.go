@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"text/template"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -84,6 +85,20 @@ var funcMap = template.FuncMap{
 		}
 
 		return filteredItems
+	},
+	"monday": func(priority int) string {
+		now := time.Now()
+
+		offset := int(time.Monday - now.Weekday())
+		if offset > 0 {
+			offset -= 6
+		}
+
+		offset += (note.HIGH - priority) * 7
+
+		lastMonday := now.AddDate(0, 0, offset)
+
+		return lastMonday.Format("01/02/2006")
 	},
 }
 

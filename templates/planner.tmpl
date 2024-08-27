@@ -1,18 +1,18 @@
-## This Week
+## Week of {{ monday 2 }} 
 
 | Description | Status |
 |---|---|
 {{ range $item := filterByPriority . 2 -}}
 |{{ $item.Contents }}|{{ status $item.State }}|
 {{ end }}
-## Next Week
+## Week of {{ monday 1 }} 
 
 | Description | Status |
 |---|---|
 {{ range $item := filterByPriority . 1 -}}
 |{{ $item.Contents }}|{{ status $item.State }}|
 {{ end }}
-## Later
+## Week of {{ monday 0 }}
 
 | Description | Status |
 |---|---|
