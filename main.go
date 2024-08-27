@@ -28,6 +28,8 @@ var funcMap = template.FuncMap{
 			result = note.RED + text + note.RESET
 		case note.IN_PROGRESS:
 			result = note.YELLOW + text + note.RESET
+		case note.REVIEWING:
+			result = note.BLUE + text + note.RESET
 		case note.COMPLETE:
 			result = note.GREEN + text + note.RESET
 		default:
@@ -60,6 +62,8 @@ var funcMap = template.FuncMap{
 			result = "Todo"
 		case note.IN_PROGRESS:
 			result = "In Progress"
+		case note.REVIEWING:
+			result = "Reviewing"
 		case note.COMPLETE:
 			result = "Complete"
 		default:

@@ -217,6 +217,8 @@ func updateList(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				if m.offset != 0 && m.offset >= len(m.notes) {
 					m.offset = len(m.notes) - 1
+				} else {
+					m.offset = max(0, m.cursor-m.visibleHeight()+1)
 				}
 
 				utils.WriteState(m.path, &m.notes)

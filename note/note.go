@@ -5,6 +5,7 @@ const (
 	NONE = iota
 	TODO
 	IN_PROGRESS
+	REVIEWING
 	COMPLETE
 )
 
@@ -53,6 +54,8 @@ func (n Note) FormatContents() string {
 		result = RED + n.Contents + RESET
 	case IN_PROGRESS:
 		result = YELLOW + n.Contents + RESET
+	case REVIEWING:
+		result = BLUE + n.Contents + RESET
 	case COMPLETE:
 		result = GREEN + n.Contents + RESET
 	default:
@@ -69,6 +72,8 @@ func (n *Note) Promote() {
 	case TODO:
 		n.State = IN_PROGRESS
 	case IN_PROGRESS:
+		n.State = REVIEWING
+	case REVIEWING:
 		n.State = COMPLETE
 	}
 }
@@ -79,8 +84,10 @@ func (n *Note) Demote() {
 		n.State = NONE
 	case IN_PROGRESS:
 		n.State = TODO
-	case COMPLETE:
+	case REVIEWING:
 		n.State = IN_PROGRESS
+	case COMPLETE:
+		n.State = REVIEWING
 	}
 }
 
