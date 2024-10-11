@@ -48,6 +48,10 @@ func WriteState(path string, notes *[]note.Note) {
 			return b.Priority - a.Priority
 		}
 
+		if a.State != b.State {
+			return a.State - b.State
+		}
+
 		return strings.Compare(a.Contents, b.Contents)
 	})
 
