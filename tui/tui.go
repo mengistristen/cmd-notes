@@ -4,6 +4,7 @@ import (
 	"cmd-notes/note"
 	"cmd-notes/utils"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -181,31 +182,51 @@ func updateList(m Model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, m.keys.IncreaseStatus):
 			if len(m.notes) > 0 {
+				var contents = m.notes[m.cursor].Contents
+
 				m.notes[m.cursor].Promote()
 
 				utils.WriteState(m.path, &m.notes)
 				m.notes = utils.ReadState(m.path)
+				m.cursor = slices.IndexFunc(m.notes, func(n note.Note) bool {
+					return n.Contents == contents
+				})
 			}
 		case key.Matches(msg, m.keys.DecreaseStatus):
 			if len(m.notes) > 0 {
+				var contents = m.notes[m.cursor].Contents
+
 				m.notes[m.cursor].Demote()
 
 				utils.WriteState(m.path, &m.notes)
 				m.notes = utils.ReadState(m.path)
+				m.cursor = slices.IndexFunc(m.notes, func(n note.Note) bool {
+					return n.Contents == contents
+				})
 			}
 		case key.Matches(msg, m.keys.IncreasePriority):
 			if len(m.notes) > 0 {
+				var contents = m.notes[m.cursor].Contents
+
 				m.notes[m.cursor].IncreasePriority()
 
 				utils.WriteState(m.path, &m.notes)
 				m.notes = utils.ReadState(m.path)
+				m.cursor = slices.IndexFunc(m.notes, func(n note.Note) bool {
+					return n.Contents == contents
+				})
 			}
 		case key.Matches(msg, m.keys.DecreasePriority):
 			if len(m.notes) > 0 {
+				var contents = m.notes[m.cursor].Contents
+
 				m.notes[m.cursor].DecreasePriority()
 
 				utils.WriteState(m.path, &m.notes)
 				m.notes = utils.ReadState(m.path)
+				m.cursor = slices.IndexFunc(m.notes, func(n note.Note) bool {
+					return n.Contents == contents
+				})
 			}
 		case key.Matches(msg, m.keys.Remove):
 			if len(m.notes) > 0 {
